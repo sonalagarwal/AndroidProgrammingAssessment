@@ -1,5 +1,6 @@
 package com.learning.macys;
 
+import android.app.ActivityManager;
 import android.app.Fragment;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -41,10 +42,10 @@ import io.reactivex.annotations.Nullable;
 
 public class MainFragment extends Fragment{
 
-    Button scanButton;
-    FileListAdapter adapter;
+    private Button scanButton;
+    private FileListAdapter adapter;
     private ProgressDialog myDialog;
-    RecyclerView mRecyclerView;
+    private RecyclerView mRecyclerView;
     private MyBroadcastReceiver myBroadcastReceiver;
     private MyBroadcastReceiver_Update myBroadcastReceiver_Update;
     private MyBroadcastReceiver_Size myBroadcastReceiver_Size;
@@ -54,9 +55,20 @@ public class MainFragment extends Fragment{
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Retain this fragment across configuration changes.
+        setRetainInstance(true);
         setHasOptionsMenu(true);
     }
-
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        // If we are returning here from a screen orientation
+        // and the service is still working, re-create and display the
+        // progress dialog.
+        if (isMyServiceRunning()) {
+            displayProgress();
+        }
+    }
     public void createNotification(){
 
         NotificationManager mNotificationManager = (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
@@ -140,7 +152,15 @@ public class MainFragment extends Fragment{
         getActivity().unregisterReceiver(myBroadcastReceiver_Size);
     }
 
-
+    private boolean isMyServiceRunning() {
+        ActivityManager manager = (ActivityManager) getActivity().getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if ("com.learning.macys.service.BackgroundIntentService".equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
     private void displayProgress() {
         myDialog = new ProgressDialog(getActivity(), 0);
         myDialog.setTitle("Scannning Files...");

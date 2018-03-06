@@ -25,7 +25,7 @@ import java.util.List;
 
 public class FileListAdapter extends RecyclerView.Adapter {
     private List<FileModel> dataSet = new ArrayList<>();
-    Context mContext;
+    private Context mContext;
 
     public FileListAdapter(Context context) {
         this.mContext = context;

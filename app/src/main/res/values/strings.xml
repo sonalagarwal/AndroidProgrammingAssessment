@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">AndroidProgrammingAssessment</string>
+    <string name="sync_btn">Start Sync</string>
+    <string name="menu_share">Share</string>
+    <string name="empty_exten">No Exts Found</string>
+</resources>

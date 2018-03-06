@@ -31,8 +31,8 @@ public class MainActivity extends AppCompatActivity {
             Fragment fragment = new MainFragment();
             FragmentTransaction ft = getFragmentManager().beginTransaction();
             ft.replace(R.id.container, fragment).commit();
+
         }
     }
-
 
 }

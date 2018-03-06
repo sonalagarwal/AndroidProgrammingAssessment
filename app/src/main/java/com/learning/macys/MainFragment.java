@@ -39,7 +39,7 @@ import io.reactivex.annotations.Nullable;
  * Created by sonal on 3/2/18.
  */
 
-public class MainFragment extends Fragment {
+public class MainFragment extends Fragment{
 
     Button scanButton;
     FileListAdapter adapter;
@@ -147,7 +147,7 @@ public class MainFragment extends Fragment {
         myDialog.setMessage("Please wait!");
         myDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         myDialog.setProgress(0);
-        myDialog.setCancelable(false);
+        myDialog.setCancelable(true);
         myDialog.setCanceledOnTouchOutside(false);
         myDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Stop Sync", new DialogInterface.OnClickListener() {
             @Override
@@ -157,6 +157,16 @@ public class MainFragment extends Fragment {
                 sIntent.setAction(BackgroundIntentService.StopReceiver.ACTION_STOP);
                 getActivity().sendBroadcast(sIntent);
                 dialog.dismiss();
+            }
+        });
+        myDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+
+            public void onCancel(DialogInterface arg0) {
+                //STOP SERVICE
+                Intent sIntent = new Intent();
+                sIntent.setAction(BackgroundIntentService.StopReceiver.ACTION_STOP);
+                getActivity().sendBroadcast(sIntent);
+                myDialog.dismiss();
             }
         });
         myDialog.show();
@@ -195,6 +205,7 @@ public class MainFragment extends Fragment {
         }
     }
 
+
     public class MyBroadcastReceiver extends BroadcastReceiver {
 
         @Override
@@ -224,6 +235,7 @@ public class MainFragment extends Fragment {
 
         }
     }
+
 }
 
 

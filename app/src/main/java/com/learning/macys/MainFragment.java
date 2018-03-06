@@ -4,7 +4,6 @@ import android.app.ActivityManager;
 import android.app.Fragment;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -13,7 +12,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.TaskStackBuilder;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -31,6 +29,7 @@ import com.learning.macys.adapter.FileListAdapter;
 import com.learning.macys.data.model.FileModel;
 import com.learning.macys.service.BackgroundIntentService;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import io.reactivex.annotations.Nullable;
@@ -40,7 +39,7 @@ import io.reactivex.annotations.Nullable;
  * Created by sonal on 3/2/18.
  */
 
-public class MainFragment extends Fragment{
+public class MainFragment extends Fragment {
 
     private Button scanButton;
     private FileListAdapter adapter;
@@ -59,6 +58,7 @@ public class MainFragment extends Fragment{
         setRetainInstance(true);
         setHasOptionsMenu(true);
     }
+
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
@@ -67,9 +67,11 @@ public class MainFragment extends Fragment{
         // progress dialog.
         if (isMyServiceRunning()) {
             displayProgress();
+
         }
     }
-    public void createNotification(){
+
+    public void createNotification() {
 
         NotificationManager mNotificationManager = (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
 
@@ -79,7 +81,7 @@ public class MainFragment extends Fragment{
         }
 
 
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(getActivity(),"123")
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(getActivity(), "123")
                 .setContentTitle("Scan notification")
                 .setContentText("File Scanning in Progress...")
                 .setSmallIcon(R.drawable.ic_launcher_background)
@@ -106,7 +108,7 @@ public class MainFragment extends Fragment{
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        adapter = new FileListAdapter(getActivity());
+        adapter = new FileListAdapter();
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getActivity());
 
         mRecyclerView.setLayoutManager(linearLayoutManager);
@@ -132,13 +134,16 @@ public class MainFragment extends Fragment{
                 intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
                 getActivity().registerReceiver(myBroadcastReceiver, intentFilter);
 
+
                 IntentFilter intentFilter_update = new IntentFilter(BackgroundIntentService.ACTION_MyUpdate);
                 intentFilter_update.addCategory(Intent.CATEGORY_DEFAULT);
                 getActivity().registerReceiver(myBroadcastReceiver_Update, intentFilter_update);
 
+
                 IntentFilter intentFilter_size = new IntentFilter(BackgroundIntentService.ACTION_Size);
-                intentFilter_update.addCategory(Intent.CATEGORY_DEFAULT);
+                intentFilter_size.addCategory(Intent.CATEGORY_DEFAULT);
                 getActivity().registerReceiver(myBroadcastReceiver_Size, intentFilter_size);
+
             }
         });
 
@@ -154,13 +159,16 @@ public class MainFragment extends Fragment{
 
     private boolean isMyServiceRunning() {
         ActivityManager manager = (ActivityManager) getActivity().getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if ("com.learning.macys.service.BackgroundIntentService".equals(service.service.getClassName())) {
-                return true;
+        if (manager != null) {
+            for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+                if ("com.learning.macys.service.BackgroundIntentService".equals(service.service.getClassName())) {
+                    return true;
+                }
             }
         }
         return false;
     }
+
     private void displayProgress() {
         myDialog = new ProgressDialog(getActivity(), 0);
         myDialog.setTitle("Scannning Files...");

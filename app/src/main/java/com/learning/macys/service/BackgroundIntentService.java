@@ -32,8 +32,8 @@ public class BackgroundIntentService extends IntentService {
     public static final String ACTION_MyIntentService = "com.learning.macys.service.RESPONSE";
     public static final String ACTION_MyUpdate = "com.learning.macys.service.UPDATE";
     public static final String ACTION_Size = "com.learning.macys.service.FILE_SIZE";
-    private  static final int FILE_COUNT = 10;
-    private  static final int EXT_COUNT = 5;
+    private static final int FILE_COUNT = 10;
+    private static final int EXT_COUNT = 5;
     public static final String ACTION_DATA = "com.learning.macys.service.DATA";
     public static final String ACTION_FILE_SIZE = "com.learning.macys.service.SIZE";
     public static final String EXTRA_KEY_UPDATE = "EXTRA_UPDATE";
@@ -109,7 +109,7 @@ public class BackgroundIntentService extends IntentService {
                     intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
                     intentUpdate.putExtra(EXTRA_KEY_UPDATE, i);
                     sendBroadcast(intentUpdate);
-                    if(stop==true){
+                    if (stop) {
                         break;
                     }
                     if (files[i].isDirectory()) {
@@ -261,7 +261,7 @@ public class BackgroundIntentService extends IntentService {
         });
 
         // Maintaining insertion order with the help of LinkedList
-        Map<String, FileModel> sortedMapOnSize = new LinkedHashMap<String, FileModel>();
+        Map<String, FileModel> sortedMapOnSize = new LinkedHashMap<>();
         for (Map.Entry<String, FileModel> entry : list) {
             sortedMapOnSize.put(entry.getKey(), entry.getValue());
         }
@@ -278,7 +278,7 @@ public class BackgroundIntentService extends IntentService {
         public void onReceive(Context context, Intent intent) {
             unregisterReceiver(receiver);
             stopSelf();
-            stop=true;
+            stop = true;
         }
 
     }

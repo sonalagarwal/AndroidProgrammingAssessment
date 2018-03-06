@@ -2,7 +2,6 @@ package com.learning.macys.data.model;
 
 import android.databinding.BaseObservable;
 import android.databinding.Bindable;
-import android.databinding.BindingAdapter;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.widget.TextView;
@@ -13,7 +12,7 @@ import com.learning.macys.BR;
  * Created by sonal on 3/2/18.
  */
 
-public class FileModel extends BaseObservable implements Parcelable{
+public class FileModel extends BaseObservable implements Parcelable {
 
     public static final int HEADER = 0;
     public static final int DATA = 1;
@@ -30,12 +29,14 @@ public class FileModel extends BaseObservable implements Parcelable{
         this.fileExtension = fileExtension;
         this.viewType = viewType;
     }
+
     private FileModel(Parcel in) {
         viewType = in.readInt();
         fileSize = in.readString();
         filename = in.readString();
         fileExtension = in.readString();
     }
+
     @Bindable
     public String getFilename() {
         return filename;
@@ -86,6 +87,7 @@ public class FileModel extends BaseObservable implements Parcelable{
         dest.writeString(filename);
         dest.writeString(fileExtension);
     }
+
     public static final Parcelable.Creator<FileModel> CREATOR
             = new Parcelable.Creator<FileModel>() {
 

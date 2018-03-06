@@ -1,8 +1,6 @@
 package com.learning.macys.adapter;
 
-import android.content.Context;
 import android.databinding.DataBindingUtil;
-import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,16 +23,16 @@ import java.util.List;
 
 public class FileListAdapter extends RecyclerView.Adapter {
     private List<FileModel> dataSet = new ArrayList<>();
-    private Context mContext;
 
-    public FileListAdapter(Context context) {
-        this.mContext = context;
+    public FileListAdapter() {
     }
-    public void setData(List<FileModel> names){
+
+    public void setData(List<FileModel> names) {
         dataSet.clear();
         dataSet.addAll(names);
         notifyDataSetChanged();
     }
+
     @Override
     public int getItemViewType(int position) {
 
@@ -52,14 +50,15 @@ public class FileListAdapter extends RecyclerView.Adapter {
                 return -1;
         }
     }
+
     public static class HeaderViewHolder extends RecyclerView.ViewHolder {
 
         TextView txtHeaderName;
 
-        public HeaderViewHolder(View itemView) {
+        HeaderViewHolder(View itemView) {
             super(itemView);
 
-            this.txtHeaderName = (TextView) itemView.findViewById(R.id.header);
+            this.txtHeaderName = itemView.findViewById(R.id.header);
         }
 
 
@@ -68,29 +67,33 @@ public class FileListAdapter extends RecyclerView.Adapter {
     public static class FileDataViewHolder extends RecyclerView.ViewHolder {
 
         private FileBinding binding;
-        public FileDataViewHolder(View itemView) {
+
+        FileDataViewHolder(View itemView) {
             super(itemView);
 
             binding = DataBindingUtil.bind(itemView);
         }
 
-        public FileBinding getBinding() {
+        FileBinding getBinding() {
             return binding;
         }
     }
+
     public static class ExtDataViewHolder extends RecyclerView.ViewHolder {
 
         private ExtensionBinding binding;
-        public ExtDataViewHolder(View itemView) {
+
+        ExtDataViewHolder(View itemView) {
             super(itemView);
 
             binding = DataBindingUtil.bind(itemView);
         }
 
-        public ExtensionBinding getBinding() {
+        ExtensionBinding getBinding() {
             return binding;
         }
     }
+
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view;
@@ -120,12 +123,12 @@ public class FileListAdapter extends RecyclerView.Adapter {
 
                     break;
                 case FileModel.DATA:
-                    ((FileDataViewHolder) holder).getBinding().setVariable(BR.filemodel,object);
+                    ((FileDataViewHolder) holder).getBinding().setVariable(BR.filemodel, object);
                     ((FileDataViewHolder) holder).getBinding().executePendingBindings();
                     break;
                 case FileModel.FREQ_EXT:
                 case FileModel.AVG_SIZE:
-                    ((ExtDataViewHolder) holder).getBinding().setVariable(BR.filemodel,object);
+                    ((ExtDataViewHolder) holder).getBinding().setVariable(BR.filemodel, object);
                     ((ExtDataViewHolder) holder).getBinding().executePendingBindings();
                     break;
 

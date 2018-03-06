@@ -148,7 +148,33 @@ public class MainFragment extends Fragment {
         });
 
     }
+    @Override
+    public void onPause() {
+        getActivity().unregisterReceiver(myBroadcastReceiver);
+        getActivity().unregisterReceiver(myBroadcastReceiver_Update);
+        getActivity().unregisterReceiver(myBroadcastReceiver_Size);
+        super.onPause();
 
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        //register BroadcastReceiver
+        IntentFilter intentFilter = new IntentFilter(BackgroundIntentService.ACTION_MyIntentService);
+        intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
+        getActivity().registerReceiver(myBroadcastReceiver, intentFilter);
+
+
+        IntentFilter intentFilter_update = new IntentFilter(BackgroundIntentService.ACTION_MyUpdate);
+        intentFilter_update.addCategory(Intent.CATEGORY_DEFAULT);
+        getActivity().registerReceiver(myBroadcastReceiver_Update, intentFilter_update);
+
+
+        IntentFilter intentFilter_size = new IntentFilter(BackgroundIntentService.ACTION_Size);
+        intentFilter_size.addCategory(Intent.CATEGORY_DEFAULT);
+        getActivity().registerReceiver(myBroadcastReceiver_Size, intentFilter_size);
+
+    }
     @Override
     public void onDestroy() {
         super.onDestroy();

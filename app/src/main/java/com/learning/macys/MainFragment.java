@@ -1,15 +1,11 @@
 package com.learning.macys;
 
-import android.app.ActivityManager;
 import android.app.Fragment;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.ProgressDialog;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -27,12 +23,17 @@ import android.support.v7.widget.Toolbar;
 
 import com.learning.macys.adapter.FileListAdapter;
 import com.learning.macys.data.model.FileModel;
-import com.learning.macys.service.BackgroundIntentService;
+import com.learning.macys.databinding.FileListBinding;
+import com.learning.macys.model.FileViewModel;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import io.reactivex.SingleObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.Nullable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
+import io.reactivex.Single;
 
 
 /**
@@ -42,33 +43,19 @@ import io.reactivex.annotations.Nullable;
 public class MainFragment extends Fragment {
 
     private Button scanButton;
+    private Button cancelButton;
     private FileListAdapter adapter;
-    private ProgressDialog myDialog;
     private RecyclerView mRecyclerView;
-    private MyBroadcastReceiver myBroadcastReceiver;
-    private MyBroadcastReceiver_Update myBroadcastReceiver_Update;
-    private MyBroadcastReceiver_Size myBroadcastReceiver_Size;
-    private Intent intentMyIntentService;
     private List<FileModel> data;
+    private FileListBinding binding;
+    private FileViewModel viewModel;
+    private Single<List<FileModel>> observer;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Retain this fragment across configuration changes.
-        setRetainInstance(true);
         setHasOptionsMenu(true);
-    }
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        // If we are returning here from a screen orientation
-        // and the service is still working, re-create and display the
-        // progress dialog.
-        if (isMyServiceRunning()) {
-            displayProgress();
-
-        }
+        setRetainInstance(true);
     }
 
     public void createNotification() {
@@ -91,140 +78,96 @@ public class MainFragment extends Fragment {
         mNotificationManager.notify(10, mBuilder.build());
     }
 
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
         // Defines the xml file for the fragment
-        View root = inflater.inflate(R.layout.fragment_layout, parent, false);
+        if (binding == null) {
+            binding = DataBindingUtil.inflate(inflater, R.layout.fragment_layout, parent, false);
 
-        scanButton = root.findViewById(R.id.scan_btn);
-        mRecyclerView = root.findViewById(R.id.recyclerView);
-        Toolbar toolbar = root.findViewById(R.id.toolbar);
-        toolbar.setTitle(R.string.app_name);
-        ((AppCompatActivity) getActivity()).setSupportActionBar(toolbar);
-        return root;
+            scanButton = binding.scanBtn.findViewById(R.id.scan_btn);
+            cancelButton = binding.cancelScanBtn.findViewById(R.id.cancel_scan_btn);
+            mRecyclerView = binding.recyclerView.findViewById(R.id.recyclerView);
+            Toolbar toolbar = binding.toolbar.findViewById(R.id.toolbar);
+            toolbar.setTitle(R.string.app_name);
+            ((AppCompatActivity) getActivity()).setSupportActionBar(toolbar);
+        }
+        return binding.getRoot();
     }
 
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        adapter = new FileListAdapter();
+        adapter = new FileListAdapter(getActivity());
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getActivity());
 
         mRecyclerView.setLayoutManager(linearLayoutManager);
         mRecyclerView.setItemAnimator(new DefaultItemAnimator());
         mRecyclerView.setAdapter(adapter);
+
+        if (viewModel != null) {
+            if(viewModel.getFinalDislayList() != null) {
+                adapter.setData(viewModel.getFinalDislayList());
+            }
+
+        } else {
+
+            viewModel = new FileViewModel();
+            binding.setViewmodel(viewModel);
+        }
+
+        cancelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                viewModel.setStopScanning(true);
+
+            }
+        });
+
         scanButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                displayProgress();
-
-                //Start MyIntentService
-                intentMyIntentService = new Intent(getActivity(), BackgroundIntentService.class);
-                getActivity().startService(intentMyIntentService);
                 createNotification();
+                viewModel.setScanVisible(false);
+                new Thread(new Runnable() {
+                    public void run() {
+                        observer = viewModel.getDisplayableData()
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribeOn(Schedulers.io());
+                        observer.subscribe(new SingleObserver<List<FileModel>>() {
+                            @Override
+                            public void onSubscribe(Disposable d) {
+                                viewModel.setLoading(true);
 
-                myBroadcastReceiver = new MyBroadcastReceiver();
-                myBroadcastReceiver_Update = new MyBroadcastReceiver_Update();
-                myBroadcastReceiver_Size = new MyBroadcastReceiver_Size();
+                            }
 
-                //register BroadcastReceiver
-                IntentFilter intentFilter = new IntentFilter(BackgroundIntentService.ACTION_MyIntentService);
-                intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
-                getActivity().registerReceiver(myBroadcastReceiver, intentFilter);
+                            @Override
+                            public void onSuccess(List<FileModel> fileModels) {
+                                adapter.setData(fileModels);
+                                viewModel.setLoading(false);
+                                viewModel.setScanVisible(true);
+                                viewModel.setStopScanning(false);
+                                viewModel.setFinalDislayList(fileModels);
 
+                            }
 
-                IntentFilter intentFilter_update = new IntentFilter(BackgroundIntentService.ACTION_MyUpdate);
-                intentFilter_update.addCategory(Intent.CATEGORY_DEFAULT);
-                getActivity().registerReceiver(myBroadcastReceiver_Update, intentFilter_update);
+                            @Override
+                            public void onError(Throwable e) {
 
-
-                IntentFilter intentFilter_size = new IntentFilter(BackgroundIntentService.ACTION_Size);
-                intentFilter_size.addCategory(Intent.CATEGORY_DEFAULT);
-                getActivity().registerReceiver(myBroadcastReceiver_Size, intentFilter_size);
+                            }
+                        });
+                    }
+                }).start();
 
             }
         });
 
     }
-    @Override
-    public void onPause() {
-        getActivity().unregisterReceiver(myBroadcastReceiver);
-        getActivity().unregisterReceiver(myBroadcastReceiver_Update);
-        getActivity().unregisterReceiver(myBroadcastReceiver_Size);
-        super.onPause();
 
-    }
-    @Override
-    public void onResume() {
-        super.onResume();
-        //register BroadcastReceiver
-        IntentFilter intentFilter = new IntentFilter(BackgroundIntentService.ACTION_MyIntentService);
-        intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
-        getActivity().registerReceiver(myBroadcastReceiver, intentFilter);
-
-
-        IntentFilter intentFilter_update = new IntentFilter(BackgroundIntentService.ACTION_MyUpdate);
-        intentFilter_update.addCategory(Intent.CATEGORY_DEFAULT);
-        getActivity().registerReceiver(myBroadcastReceiver_Update, intentFilter_update);
-
-
-        IntentFilter intentFilter_size = new IntentFilter(BackgroundIntentService.ACTION_Size);
-        intentFilter_size.addCategory(Intent.CATEGORY_DEFAULT);
-        getActivity().registerReceiver(myBroadcastReceiver_Size, intentFilter_size);
-
-    }
     @Override
     public void onDestroy() {
         super.onDestroy();
-        getActivity().unregisterReceiver(myBroadcastReceiver);
-        getActivity().unregisterReceiver(myBroadcastReceiver_Update);
-        getActivity().unregisterReceiver(myBroadcastReceiver_Size);
-    }
-
-    private boolean isMyServiceRunning() {
-        ActivityManager manager = (ActivityManager) getActivity().getSystemService(Context.ACTIVITY_SERVICE);
-        if (manager != null) {
-            for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-                if ("com.learning.macys.service.BackgroundIntentService".equals(service.service.getClassName())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private void displayProgress() {
-        myDialog = new ProgressDialog(getActivity(), 0);
-        myDialog.setTitle("Scannning Files...");
-        myDialog.setMessage("Please wait!");
-        myDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-        myDialog.setProgress(0);
-        myDialog.setCancelable(true);
-        myDialog.setCanceledOnTouchOutside(false);
-        myDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Stop Sync", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                //STOP SERVICE
-                Intent sIntent = new Intent();
-                sIntent.setAction(BackgroundIntentService.StopReceiver.ACTION_STOP);
-                getActivity().sendBroadcast(sIntent);
-                dialog.dismiss();
-            }
-        });
-        myDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-
-            public void onCancel(DialogInterface arg0) {
-                //STOP SERVICE
-                Intent sIntent = new Intent();
-                sIntent.setAction(BackgroundIntentService.StopReceiver.ACTION_STOP);
-                getActivity().sendBroadcast(sIntent);
-                myDialog.dismiss();
-            }
-        });
-        myDialog.show();
-
 
     }
 
@@ -256,37 +199,6 @@ public class MainFragment extends Fragment {
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
-        }
-    }
-
-
-    public class MyBroadcastReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            data = intent.getParcelableArrayListExtra(BackgroundIntentService.ACTION_DATA);
-            adapter.setData(data);
-            myDialog.dismiss();
-        }
-    }
-
-    public class MyBroadcastReceiver_Update extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            int update = intent.getIntExtra(BackgroundIntentService.EXTRA_KEY_UPDATE, 0);
-            myDialog.setProgress(update);
-        }
-    }
-
-    public class MyBroadcastReceiver_Size extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            int max = intent.getIntExtra(BackgroundIntentService.ACTION_FILE_SIZE, 0);
-            myDialog.setMax(max);
-
         }
     }
 

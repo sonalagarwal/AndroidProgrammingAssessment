@@ -1,14 +1,10 @@
-package com.learning.macys.service;
+package com.learning.macys.model;
 
-import android.app.IntentService;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.databinding.BaseObservable;
+import android.databinding.Bindable;
 import android.os.Environment;
-import android.os.Parcelable;
-import android.util.Log;
 
+import com.learning.macys.BR;
 import com.learning.macys.data.model.FileModel;
 import com.learning.macys.utils.StringUtils;
 
@@ -24,34 +20,90 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.Single;
+import io.reactivex.disposables.Disposable;
+
 /**
- * Created by sonal on 3/5/18.
+ * Created by sonal on 3/7/18.
  */
 
-public class BackgroundIntentService extends IntentService {
-    public static final String ACTION_MyIntentService = "com.learning.macys.service.RESPONSE";
-    public static final String ACTION_MyUpdate = "com.learning.macys.service.UPDATE";
-    public static final String ACTION_Size = "com.learning.macys.service.FILE_SIZE";
+public class FileViewModel extends BaseObservable {
     private static final int FILE_COUNT = 10;
     private static final int EXT_COUNT = 5;
-    public static final String ACTION_DATA = "com.learning.macys.service.DATA";
-    public static final String ACTION_FILE_SIZE = "com.learning.macys.service.SIZE";
-    public static final String EXTRA_KEY_UPDATE = "EXTRA_UPDATE";
-    private ArrayList<FileModel> filesList = new ArrayList<>();
-    private HashMap<String, FileModel> gfilemap = new HashMap<>();
-    private StopReceiver receiver;
-    private boolean stop = false;
+    private ArrayList<FileModel> filesList;
+    private HashMap<String, FileModel> gfilemap;
+    public int progressValue;
+    public int maxValue;
+    public boolean isLoading;
+    public boolean stopScanning;
+    public boolean scanVisible = true;
+    private List<FileModel> finalDislayList;
 
-    public BackgroundIntentService() {
-        super("com.learning.macys.service.BackgroundIntentService");
+
+    public List<FileModel> getFinalDislayList() {
+        return finalDislayList;
     }
 
-    @Override
-    protected void onHandleIntent(Intent intent) {
-        IntentFilter filter = new IntentFilter(StopReceiver.ACTION_STOP);
-        filter.addCategory(Intent.CATEGORY_DEFAULT);
-        receiver = new StopReceiver();
-        registerReceiver(receiver, filter);
+    public void setFinalDislayList(List<FileModel> finalDislayList) {
+        this.finalDislayList = finalDislayList;
+    }
+
+    @Bindable
+    public boolean isScanVisible() {
+        return scanVisible;
+    }
+
+    public void setScanVisible(boolean scanVisible) {
+        this.scanVisible = scanVisible;
+        notifyPropertyChanged(BR.scanVisible);
+
+    }
+
+    public boolean isStopScanning() {
+        return stopScanning;
+    }
+
+    public void setStopScanning(boolean stopScanning) {
+        this.stopScanning = stopScanning;
+    }
+
+    @Bindable
+    public int getProgressValue() {
+        return progressValue;
+    }
+
+    public void setProgressValue(int progressValue) {
+        this.progressValue = progressValue;
+        notifyPropertyChanged(BR.progressValue);
+    }
+
+    @Bindable
+    public int getMaxValue() {
+        return maxValue;
+    }
+
+    public void setMaxValue(int maxValue) {
+        this.maxValue = maxValue;
+        notifyPropertyChanged(BR.maxValue);
+    }
+
+    @Bindable
+    public boolean isLoading() {
+        return isLoading;
+    }
+
+    public void setLoading(boolean isLoading) {
+        this.isLoading = isLoading;
+        notifyPropertyChanged(BR.loading);
+    }
+
+    public Single<List<FileModel>> getDisplayableData() {
+        setLoading(true);
+
+        filesList = new ArrayList<>();
+        gfilemap = new HashMap<>();
 
         HashMap<String, FileModel> filemap = new HashMap<>();
         String path = Environment.getExternalStorageDirectory().getAbsolutePath();
@@ -61,7 +113,7 @@ public class BackgroundIntentService extends IntentService {
             filemap = displayDirectoryContents(f);
 
         }
-        List<FileModel> finalDislayList = new ArrayList<>();
+        finalDislayList = new ArrayList<>();
         finalDislayList.add(new FileModel("Largest Files", null, null, 0));
 
         Map<String, FileModel> sortFilesBySize = sortFilesBySize(filemap);
@@ -83,33 +135,32 @@ public class BackgroundIntentService extends IntentService {
             finalDislayList.add(new FileModel("No files with extensions found", null, null, 0));
 
         }
-        //return result
-        Intent intentResponse = new Intent();
-        intentResponse.setAction(ACTION_MyIntentService);
-        intentResponse.addCategory(Intent.CATEGORY_DEFAULT);
-        intentResponse.putParcelableArrayListExtra(ACTION_DATA, (ArrayList<? extends Parcelable>) finalDislayList);
-        sendBroadcast(intentResponse);
+        Single<List<FileModel>> observable = Single.just(finalDislayList);
+
+        return observable;
     }
 
-    public HashMap<String, FileModel> displayDirectoryContents(File dir) {
+    private HashMap<String, FileModel> displayDirectoryContents(File dir) {
 
         try {
             File[] files = dir.listFiles();
             if (files != null) {
-                //send update
-                Intent intentUpdate = new Intent();
-                intentUpdate.setAction(ACTION_Size);
-                intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                intentUpdate.putExtra(ACTION_FILE_SIZE, files.length);
-                sendBroadcast(intentUpdate);
+                final Observable<Integer> maxObserver = Observable.just(files.length);
+                new Thread(new Runnable() {
+                    public void run() {
+                        maxObserver.subscribe(getMaxObserver());
+                    }
+                }).start();
 
                 for (int i = 0; i < files.length; i++) {
-                    intentUpdate = new Intent();
-                    intentUpdate.setAction(ACTION_MyUpdate);
-                    intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                    intentUpdate.putExtra(EXTRA_KEY_UPDATE, i);
-                    sendBroadcast(intentUpdate);
-                    if (stop) {
+
+                    final Observable<Integer> observable = Observable.just(i);
+                    new Thread(new Runnable() {
+                        public void run() {
+                            observable.subscribe(getObserver());
+                        }
+                    }).start();
+                    if (isStopScanning()) {
                         break;
                     }
                     if (files[i].isDirectory()) {
@@ -130,13 +181,59 @@ public class BackgroundIntentService extends IntentService {
         return gfilemap;
     }
 
-    @Override
-    public void onDestroy() {
+    private Observer<Integer> getMaxObserver() {
 
-        Log.i("", "onCreate() , service stopped...");
+        return new Observer<Integer>() {
+
+            @Override
+            public void onSubscribe(Disposable d) {
+
+            }
+
+            @Override
+            public void onNext(Integer integer) {
+                setMaxValue(integer);
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        };
     }
 
-    public String avgFileSize(ArrayList<FileModel> fileList) {
+    private Observer<Integer> getObserver() {
+
+        return new Observer<Integer>() {
+
+            @Override
+            public void onSubscribe(Disposable d) {
+
+            }
+
+            @Override
+            public void onNext(Integer integer) {
+                setProgressValue(integer);
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        };
+    }
+
+    private String avgFileSize(ArrayList<FileModel> fileList) {
         long avgFileSize = 0;
         if (fileList.size() > 0) {
             for (int i = 0; i < fileList.size(); i++) {
@@ -162,7 +259,7 @@ public class BackgroundIntentService extends IntentService {
         return fileList;
     }
 
-    public ArrayList<FileModel> getLargeFiles(int fileCount, ArrayList<FileModel> fileList) {
+    private ArrayList<FileModel> getLargeFiles(int fileCount, ArrayList<FileModel> fileList) {
 
         ArrayList<FileModel> largeFileList = new ArrayList<>();
         int count = fileList.size();
@@ -178,7 +275,7 @@ public class BackgroundIntentService extends IntentService {
         return largeFileList;
     }
 
-    public ArrayList<String> frequentFileExtensions(int extentionCount) {
+    private ArrayList<String> frequentFileExtensions(int extentionCount) {
         ArrayList<String> extsList = new ArrayList<>();
 
         Map<String, Integer> sortFilesByExtension = getSortedFileExtensions();
@@ -261,25 +358,11 @@ public class BackgroundIntentService extends IntentService {
         });
 
         // Maintaining insertion order with the help of LinkedList
-        Map<String, FileModel> sortedMapOnSize = new LinkedHashMap<>();
+        Map<String, FileModel> sortedMapOnSize = new LinkedHashMap<String, FileModel>();
         for (Map.Entry<String, FileModel> entry : list) {
             sortedMapOnSize.put(entry.getKey(), entry.getValue());
         }
 
         return sortedMapOnSize;
-    }
-
-
-    public class StopReceiver extends BroadcastReceiver {
-
-        public static final String ACTION_STOP = "stop";
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            unregisterReceiver(receiver);
-            stopSelf();
-            stop = true;
-        }
-
     }
 }

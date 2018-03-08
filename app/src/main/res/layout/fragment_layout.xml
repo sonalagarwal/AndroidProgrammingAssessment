@@ -10,7 +10,7 @@
 
         <variable
             name="viewmodel"
-            type="com.learning.macys.model.FileViewModel" />
+            type="com.learning.macys.viewmodel.FileViewModel" />
     </data>
 
     <android.support.design.widget.CoordinatorLayout

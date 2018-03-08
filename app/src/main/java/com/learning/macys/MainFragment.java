@@ -3,7 +3,6 @@ package com.learning.macys;
 import android.app.Fragment;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.databinding.DataBindingUtil;
 import android.os.Bundle;
@@ -24,7 +23,7 @@ import android.support.v7.widget.Toolbar;
 import com.learning.macys.adapter.FileListAdapter;
 import com.learning.macys.data.model.FileModel;
 import com.learning.macys.databinding.FileListBinding;
-import com.learning.macys.model.FileViewModel;
+import com.learning.macys.viewmodel.FileViewModel;
 
 import java.util.List;
 
@@ -99,22 +98,16 @@ public class MainFragment extends Fragment {
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        adapter = new FileListAdapter(getActivity());
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getActivity());
+        if (viewModel == null) {
+            adapter = new FileListAdapter(getActivity());
+            LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getActivity());
 
-        mRecyclerView.setLayoutManager(linearLayoutManager);
-        mRecyclerView.setItemAnimator(new DefaultItemAnimator());
-        mRecyclerView.setAdapter(adapter);
-
-        if (viewModel != null) {
-            if(viewModel.getFinalDislayList() != null) {
-                adapter.setData(viewModel.getFinalDislayList());
-            }
-
-        } else {
-
+            mRecyclerView.setLayoutManager(linearLayoutManager);
+            mRecyclerView.setItemAnimator(new DefaultItemAnimator());
+            mRecyclerView.setAdapter(adapter);
             viewModel = new FileViewModel();
             binding.setViewmodel(viewModel);
+
         }
 
         cancelButton.setOnClickListener(new View.OnClickListener() {

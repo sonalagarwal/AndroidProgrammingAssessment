@@ -19,11 +19,14 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import io.reactivex.Observable;
 import io.reactivex.Observer;
 import io.reactivex.Single;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * Created by sonal on 3/7/18.
@@ -99,7 +102,7 @@ public class FileViewModel extends BaseObservable {
         notifyPropertyChanged(BR.loading);
     }
 
-    public Single<List<FileModel>> getDisplayableData() {
+    public List<FileModel> getDisplayableData() {
         setLoading(true);
 
         filesList = new ArrayList<>();
@@ -135,31 +138,50 @@ public class FileViewModel extends BaseObservable {
             finalDislayList.add(new FileModel("No files with extensions found", null, null, 0));
 
         }
-        Single<List<FileModel>> observable = Single.just(finalDislayList);
+        Observable.fromCallable(new Callable<List<FileModel>>() {
 
-        return observable;
+            @Override
+            public List<FileModel> call() throws Exception {
+                return finalDislayList;
+
+            }
+        });
+        return finalDislayList;
     }
 
     private HashMap<String, FileModel> displayDirectoryContents(File dir) {
 
         try {
-            File[] files = dir.listFiles();
+            final File[] files = dir.listFiles();
             if (files != null) {
-                final Observable<Integer> maxObserver = Observable.just(files.length);
-                new Thread(new Runnable() {
-                    public void run() {
-                        maxObserver.subscribe(getMaxObserver());
-                    }
-                }).start();
+               Observable.fromCallable(new Callable<Integer>() {
+
+                   @Override
+                   public Integer call() throws Exception {
+                       return files.length;
+
+                   }
+               })
+                       .observeOn(AndroidSchedulers.mainThread())
+                       .subscribeOn(Schedulers.io())
+                        .subscribe(getMaxObserver());
+
 
                 for (int i = 0; i < files.length; i++) {
 
-                    final Observable<Integer> observable = Observable.just(i);
-                    new Thread(new Runnable() {
-                        public void run() {
-                            observable.subscribe(getObserver());
+                    final int finalI = i;
+                    Observable.fromCallable(new Callable<Integer>() {
+
+                        @Override
+                        public Integer call() throws Exception {
+                            return finalI;
+
                         }
-                    }).start();
+                    })
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribeOn(Schedulers.io())
+                            .subscribe(getObserver());
+
                     if (isStopScanning()) {
                         break;
                     }

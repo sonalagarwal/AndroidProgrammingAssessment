@@ -26,7 +26,10 @@ import com.learning.macys.databinding.FileListBinding;
 import com.learning.macys.viewmodel.FileViewModel;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 
+import io.reactivex.Observable;
+import io.reactivex.Observer;
 import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.Nullable;
@@ -123,41 +126,52 @@ public class MainFragment extends Fragment {
             public void onClick(View v) {
                 createNotification();
                 viewModel.setScanVisible(false);
-                new Thread(new Runnable() {
-                    public void run() {
-                        observer = viewModel.getDisplayableData()
+
+                        Observable.fromCallable(new Callable<List<FileModel>>() {
+
+                            @Override
+                            public List<FileModel> call() throws Exception {
+                                return viewModel.getDisplayableData();
+
+                            }
+                        })
                                 .observeOn(AndroidSchedulers.mainThread())
-                                .subscribeOn(Schedulers.io());
-                        observer.subscribe(new SingleObserver<List<FileModel>>() {
-                            @Override
-                            public void onSubscribe(Disposable d) {
-                                viewModel.setLoading(true);
-
-                            }
-
-                            @Override
-                            public void onSuccess(List<FileModel> fileModels) {
-                                adapter.setData(fileModels);
-                                viewModel.setLoading(false);
-                                viewModel.setScanVisible(true);
-                                viewModel.setStopScanning(false);
-                                viewModel.setFinalDislayList(fileModels);
-
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-
-                            }
-                        });
-                    }
-                }).start();
+                                .subscribeOn(Schedulers.io())
+                                .subscribe(getSingleObserver());
 
             }
         });
 
     }
+    private Observer<List<FileModel>> getSingleObserver() {
 
+        return new Observer<List<FileModel>>() {
+            @Override
+            public void onSubscribe(Disposable d) {
+                viewModel.setLoading(true);
+
+            }
+
+            @Override
+            public void onNext(List<FileModel> fileModels) {
+                adapter.setData(fileModels);
+                viewModel.setLoading(false);
+                viewModel.setScanVisible(true);
+                viewModel.setStopScanning(false);
+                viewModel.setFinalDislayList(fileModels);
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        };
+    }
     @Override
     public void onDestroy() {
         super.onDestroy();
